@@ -14,6 +14,7 @@
 
 html {
   background: var(--bg);
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -26,6 +27,27 @@ body {
 
 a {
   color: inherit;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  padding: 0.65rem 1.1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  background: var(--accent);
+}
+
+button:hover,
+button:focus-visible {
+  color: var(--accent);
+  background: var(--surface);
 }
 
 .skip-link {
@@ -99,9 +121,24 @@ a {
   padding: 2rem 1.25rem 4rem;
 }
 
-.hero,
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 2rem;
+  align-items: center;
+}
+
+.hero img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.hero__copy,
+.page-head,
 .page-section {
-  max-width: 720px;
+  max-width: 760px;
 }
 
 .eyebrow {
@@ -116,16 +153,91 @@ h1 {
   line-height: 1.05;
 }
 
+h2 {
+  margin: 0 0 0.5rem;
+}
+
 p {
   color: var(--muted);
   font-size: 1.1rem;
   line-height: 1.6;
 }
 
-@media (max-width: 640px) {
-  .site-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+.search-panel {
+  margin: 1.5rem 0 2rem;
 }
 
+.search-panel label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.search-panel__row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.search-panel input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.notice,
+.state {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.state--error {
+  color: #a33;
+  border-color: #d9a59c;
+}
+
+.recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.recipe-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.recipe-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.recipe-card__body {
+  padding: 1rem;
+}
+
+.recipe-card__body p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .site-header,
+  .hero,
+  .search-panel__row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
