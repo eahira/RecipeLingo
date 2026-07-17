@@ -3,7 +3,7 @@ import { escapeHtml } from '../utils/text.js';
 
 function recipeCard(meal) {
   return `
-    <article class="recipe-card">
+    <article class="recipe-card recipe-card--clickable" data-open-recipe="${escapeHtml(meal.idMeal)}" tabindex="0" role="link" aria-label="Открыть рецепт ${escapeHtml(meal.strMeal)}">
       <img src="${escapeHtml(meal.strMealThumb)}" alt="${escapeHtml(meal.strMeal)}" loading="lazy">
       <div class="recipe-card__body">
         <h2>${escapeHtml(meal.strMeal)}</h2>
@@ -83,6 +83,49 @@ export class AppView {
       ${message ? `<p class="notice">${escapeHtml(message)}</p>` : ''}
       ${state === 'empty' ? '<div class="state">Ничего не найдено. Попробуйте другой запрос.</div>' : ''}
       ${meals.length ? `<div class="recipe-grid">${meals.map(recipeCard).join('')}</div>` : ''}
+    `;
+  }
+
+  getRecipeTemplate({ recipe, state }) {
+    if (state === 'loading') {
+      return '<div class="state">Загружаю рецепт...</div>';
+    }
+
+    if (state === 'error') {
+      return '<div class="state state--error">Не получилось открыть рецепт. Вернитесь к поиску и попробуйте ещё раз.</div>';
+    }
+
+    if (!recipe) {
+      return '<div class="state">Рецепт не найден.</div>';
+    }
+
+    const ingredients = recipe.ingredients.map((item) => `
+      <li>
+        <span>${escapeHtml(item.name)}</span>
+        ${item.measure ? `<strong>${escapeHtml(item.measure)}</strong>` : ''}
+      </li>
+    `).join('');
+
+    return `
+      <article class="recipe-detail">
+        <a class="back-link" href="#/recipes">← К рецептам</a>
+        <div class="recipe-detail__hero">
+          <img src="${escapeHtml(recipe.thumb)}" alt="${escapeHtml(recipe.title)}">
+          <div class="recipe-detail__summary">
+            <p class="eyebrow">${escapeHtml(recipe.category)}${recipe.area ? ` · ${escapeHtml(recipe.area)}` : ''}</p>
+            <h1>${escapeHtml(recipe.title)}</h1>
+          </div>
+        </div>
+        <section class="ingredients">
+          <h2>Ингредиенты</h2>
+          <ul>${ingredients}</ul>
+        </section>
+        <section class="instructions">
+          <h2>Инструкция</h2>
+          <div class="text-block">${escapeHtml(recipe.instructions)}</div>
+        </section>
+        ${recipe.youtube ? `<a class="video-link" href="${escapeHtml(recipe.youtube)}" target="_blank" rel="noreferrer">Открыть видео рецепта</a>` : ''}
+      </article>
     `;
   }
 

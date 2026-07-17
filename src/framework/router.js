@@ -24,7 +24,30 @@ export class Router {
       return;
     }
 
+    const dynamicRoute = this.routes.find((item) => item.path.includes(':'));
+
+    if (dynamicRoute) {
+      const routeParts = dynamicRoute.path.split('/');
+      const currentParts = currentRoute.split('/');
+
+      if (routeParts.length === currentParts.length) {
+        const params = {};
+        const matches = routeParts.every((part, index) => {
+          if (part.startsWith(':')) {
+            params[part.slice(1)] = currentParts[index];
+            return true;
+          }
+
+          return part === currentParts[index];
+        });
+
+        if (matches) {
+          dynamicRoute.handler(params);
+          return;
+        }
+      }
+    }
+
     this.fallback();
   }
 }
-

@@ -10,6 +10,8 @@ export default [
       sourceType: 'module',
       globals: {
         document: 'readonly',
+        fetch: 'readonly',
+        FormData: 'readonly',
         window: 'readonly'
       }
     },
@@ -17,7 +19,7 @@ export default [
       react: reactPlugin
     },
     rules: {
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'react/react-in-jsx-scope': 'off'
     },
     settings: {

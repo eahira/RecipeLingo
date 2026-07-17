@@ -14,6 +14,10 @@ export class AppPresenter {
       meals: [],
       message: ''
     };
+    this.recipeState = {
+      state: 'initial',
+      recipe: null
+    };
   }
 
   renderPage(activeRoute, content) {
@@ -29,6 +33,22 @@ export class AppPresenter {
         this.search(data.get('query'));
       });
     });
+
+    document.querySelectorAll('[data-open-recipe]').forEach((card) => {
+      const openRecipe = () => {
+        window.location.hash = `#/recipe/${card.dataset.openRecipe}`;
+      };
+
+      card.addEventListener('click', openRecipe);
+      card.addEventListener('keydown', (event) => {
+        if (!['Enter', ' '].includes(event.key)) {
+          return;
+        }
+
+        event.preventDefault();
+        openRecipe();
+      });
+    });
   }
 
   renderHome() {
@@ -37,6 +57,64 @@ export class AppPresenter {
 
   renderRecipes() {
     this.renderPage(AppRoute.RECIPES, this.view.getRecipesTemplate(this.searchState));
+  }
+
+  mapRecipe(meal) {
+    const ingredients = [];
+
+    for (let index = 1; index <= 20; index += 1) {
+      const name = normalizeText(meal[`strIngredient${index}`]);
+      const measure = normalizeText(meal[`strMeasure${index}`]);
+
+      if (!name) {
+        continue;
+      }
+
+      ingredients.push({
+        id: index,
+        name,
+        measure
+      });
+    }
+
+    return {
+      id: meal.idMeal,
+      title: meal.strMeal,
+      category: meal.strCategory || '',
+      area: meal.strArea || '',
+      thumb: meal.strMealThumb || '',
+      instructions: meal.strInstructions || '',
+      youtube: meal.strYoutube || '',
+      ingredients
+    };
+  }
+
+  renderRecipePage() {
+    this.renderPage('#/recipe', this.view.getRecipeTemplate(this.recipeState));
+  }
+
+  async renderRecipe(params) {
+    this.recipeState = {
+      state: 'loading',
+      recipe: null
+    };
+    this.renderRecipePage();
+
+    try {
+      const meal = await mealsApi.lookupById(params.id);
+
+      this.recipeState = {
+        state: meal ? 'success' : 'empty',
+        recipe: meal ? this.mapRecipe(meal) : null
+      };
+      this.renderRecipePage();
+    } catch (_error) {
+      this.recipeState = {
+        state: 'error',
+        recipe: null
+      };
+      this.renderRecipePage();
+    }
   }
 
   async search(query) {

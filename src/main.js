@@ -16,6 +16,7 @@ const appPresenter = new AppPresenter({
 const router = new Router([
   { path: '#/', handler: () => appPresenter.renderHome() },
   { path: '#/recipes', handler: () => appPresenter.renderRecipes() },
+  { path: '#/recipe/:id', handler: (params) => appPresenter.renderRecipe(params) },
   { path: '#/favorites', handler: () => appPresenter.renderFavorites() },
   { path: '#/vocabulary', handler: () => appPresenter.renderVocabulary() },
   { path: '#/trainer', handler: () => appPresenter.renderTrainer() }
