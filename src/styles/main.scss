@@ -163,6 +163,10 @@ p {
   line-height: 1.6;
 }
 
+.muted {
+  color: var(--muted);
+}
+
 .search-panel {
   margin: 1.5rem 0 2rem;
 }
@@ -272,18 +276,45 @@ p {
 .ingredients ul {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
+  gap: 0 2rem;
   margin: 1rem 0 0;
   padding: 0;
   list-style: none;
 }
 
 .ingredients li {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.9rem 0;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
   border-bottom: 1px solid var(--line);
+  padding: 0.85rem 0;
+}
+
+.ingredient-primary,
+.ingredient-amount,
+.ingredients li small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ingredient-primary {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ingredient-amount {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ingredients small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .text-block {
@@ -291,6 +322,37 @@ p {
   color: var(--text);
   font-size: 1.1rem;
   line-height: 1.7;
+}
+
+.mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.mode-switch button {
+  color: var(--accent);
+  background: transparent;
+}
+
+.mode-switch button.is-active,
+.mode-switch button:hover,
+.mode-switch button:focus-visible {
+  color: #fff;
+  background: var(--accent);
+}
+
+.instruction-pair {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.instruction-pair__label {
+  margin: 0.5rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .video-link {

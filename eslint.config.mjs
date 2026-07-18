@@ -12,6 +12,7 @@ export default [
         document: 'readonly',
         fetch: 'readonly',
         FormData: 'readonly',
+        URLSearchParams: 'readonly',
         window: 'readonly'
       }
     },

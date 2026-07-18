@@ -2,11 +2,14 @@ import { APP_TITLE } from '../const.js';
 import { escapeHtml } from '../utils/text.js';
 
 function recipeCard(meal) {
+  const hasTranslatedTitle = meal.translatedTitle && meal.translatedTitle.toLowerCase() !== meal.strMeal.toLowerCase();
+
   return `
     <article class="recipe-card recipe-card--clickable" data-open-recipe="${escapeHtml(meal.idMeal)}" tabindex="0" role="link" aria-label="Открыть рецепт ${escapeHtml(meal.strMeal)}">
       <img src="${escapeHtml(meal.strMealThumb)}" alt="${escapeHtml(meal.strMeal)}" loading="lazy">
       <div class="recipe-card__body">
         <h2>${escapeHtml(meal.strMeal)}</h2>
+        ${hasTranslatedTitle ? `<p>${escapeHtml(meal.translatedTitle)}</p>` : ''}
         <p>${escapeHtml(meal.strCategory || 'Category not specified')} · ${escapeHtml(meal.strArea || 'Cuisine not specified')}</p>
       </div>
     </article>
@@ -65,7 +68,7 @@ export class AppView {
     `;
   }
 
-  getRecipesTemplate({ state, query, meals, message }) {
+  getRecipesTemplate({ state, query, translatedQuery, meals, message }) {
     return `
       <section class="page-head">
         <h1>Поиск рецептов</h1>
@@ -81,12 +84,13 @@ export class AppView {
       ${state === 'loading' ? '<div class="state">Ищу рецепты...</div>' : ''}
       ${state === 'error' ? '<div class="state state--error">Не получилось загрузить рецепты. Попробуйте ещё раз.</div>' : ''}
       ${message ? `<p class="notice">${escapeHtml(message)}</p>` : ''}
+      ${translatedQuery && translatedQuery !== query ? `<p class="muted">Английский запрос для TheMealDB: ${escapeHtml(translatedQuery)}</p>` : ''}
       ${state === 'empty' ? '<div class="state">Ничего не найдено. Попробуйте другой запрос.</div>' : ''}
       ${meals.length ? `<div class="recipe-grid">${meals.map(recipeCard).join('')}</div>` : ''}
     `;
   }
 
-  getRecipeTemplate({ recipe, state }) {
+  getRecipeTemplate({ recipe, translated, state, mode }) {
     if (state === 'loading') {
       return '<div class="state">Загружаю рецепт...</div>';
     }
@@ -99,11 +103,25 @@ export class AppView {
       return '<div class="state">Рецепт не найден.</div>';
     }
 
-    const ingredients = recipe.ingredients.map((item) => `
+    const translatedRecipe = translated || recipe;
+    const instructionPairs = translatedRecipe.instructionPairs || [];
+    const ingredients = translatedRecipe.ingredients.map((item) => `
       <li>
-        <span>${escapeHtml(item.name)}</span>
-        ${item.measure ? `<strong>${escapeHtml(item.measure)}</strong>` : ''}
+        <span>
+          <strong>${escapeHtml(item.translatedName || item.originalName)}</strong>
+          <small>${escapeHtml(item.originalName)}${item.originalMeasure ? ` · ${escapeHtml(item.originalMeasure)}` : ''}</small>
+        </span>
+        ${(item.translatedMeasure || item.originalMeasure) ? `<strong>${escapeHtml(item.translatedMeasure || item.originalMeasure)}</strong>` : ''}
       </li>
+    `).join('');
+    const translatedInstructions = instructionPairs.map((item) => item.translation).filter(Boolean).join('\n\n');
+    const pairedInstructions = instructionPairs.map((item) => `
+      <div class="instruction-pair">
+        <p class="instruction-pair__label">Оригинал</p>
+        <div class="text-block">${escapeHtml(item.original)}</div>
+        <p class="instruction-pair__label">Перевод</p>
+        <div class="text-block">${escapeHtml(item.translation || 'Перевод временно недоступен.')}</div>
+      </div>
     `).join('');
 
     return `
@@ -114,6 +132,7 @@ export class AppView {
           <div class="recipe-detail__summary">
             <p class="eyebrow">${escapeHtml(recipe.category)}${recipe.area ? ` · ${escapeHtml(recipe.area)}` : ''}</p>
             <h1>${escapeHtml(recipe.title)}</h1>
+            ${translatedRecipe.translatedTitle ? `<p>${escapeHtml(translatedRecipe.translatedTitle)}</p>` : ''}
           </div>
         </div>
         <section class="ingredients">
@@ -122,7 +141,19 @@ export class AppView {
         </section>
         <section class="instructions">
           <h2>Инструкция</h2>
-          <div class="text-block">${escapeHtml(recipe.instructions)}</div>
+          <p class="muted">Машинный перевод используется как подсказка. Сравнивайте его с английским оригиналом.</p>
+          <div class="mode-switch" aria-label="Режим чтения инструкции">
+            ${[
+              ['translated', 'Перевод'],
+              ['original', 'Оригинал'],
+              ['both', 'Вместе']
+            ].map(([value, label]) => `
+              <button class="${mode === value ? 'is-active' : ''}" type="button" data-recipe-mode="${value}">${label}</button>
+            `).join('')}
+          </div>
+          ${mode === 'translated' ? `<div class="text-block">${escapeHtml(translatedInstructions || 'Перевод временно недоступен.')}</div>` : ''}
+          ${mode === 'original' ? `<div class="text-block">${escapeHtml(recipe.instructions)}</div>` : ''}
+          ${mode === 'both' ? `<div class="paired-instructions">${pairedInstructions}</div>` : ''}
         </section>
         ${recipe.youtube ? `<a class="video-link" href="${escapeHtml(recipe.youtube)}" target="_blank" rel="noreferrer">Открыть видео рецепта</a>` : ''}
       </article>

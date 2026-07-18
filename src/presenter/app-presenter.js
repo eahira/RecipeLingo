@@ -2,6 +2,7 @@ import { AppRoute } from '../const.js';
 import { mealsApi } from '../api/meals-api.js';
 import { render } from '../framework/render.js';
 import { normalizeText } from '../utils/text.js';
+import { translationService } from '../model/translation-service.js';
 
 export class AppPresenter {
   constructor({ container, view, model }) {
@@ -11,12 +12,15 @@ export class AppPresenter {
     this.searchState = {
       state: 'initial',
       query: '',
+      translatedQuery: '',
       meals: [],
       message: ''
     };
     this.recipeState = {
       state: 'initial',
-      recipe: null
+      recipe: null,
+      translated: null,
+      mode: 'translated'
     };
   }
 
@@ -26,6 +30,16 @@ export class AppPresenter {
   }
 
   bindCommon() {
+    document.querySelectorAll('[data-recipe-mode]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.recipeState = {
+          ...this.recipeState,
+          mode: button.dataset.recipeMode
+        };
+        this.renderRecipePage();
+      });
+    });
+
     document.querySelectorAll('[data-search-form]').forEach((form) => {
       form.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -72,8 +86,10 @@ export class AppPresenter {
 
       ingredients.push({
         id: index,
-        name,
-        measure
+        originalName: name,
+        originalMeasure: measure,
+        translatedName: '',
+        translatedMeasure: ''
       });
     }
 
@@ -89,6 +105,32 @@ export class AppPresenter {
     };
   }
 
+  async translateRecipe(recipe) {
+    const [translatedTitle, translatedIngredients, translatedInstructions] = await Promise.all([
+      translationService.translateTitle(recipe.title),
+      Promise.all(recipe.ingredients.map(async (item) => ({
+        ...item,
+        translatedName: await translationService.translateIngredient(item.originalName),
+        translatedMeasure: await translationService.translateMeasure(item.originalMeasure)
+      }))),
+      translationService.translateInstructions(recipe.instructions)
+    ]);
+
+    return {
+      ...recipe,
+      translatedTitle,
+      ingredients: translatedIngredients,
+      instructionPairs: translatedInstructions
+    };
+  }
+
+  async translateMealCards(meals) {
+    return Promise.all(meals.map(async (meal) => ({
+      ...meal,
+      translatedTitle: await translationService.translateTitle(meal.strMeal)
+    })));
+  }
+
   renderRecipePage() {
     this.renderPage('#/recipe', this.view.getRecipeTemplate(this.recipeState));
   }
@@ -96,22 +138,42 @@ export class AppPresenter {
   async renderRecipe(params) {
     this.recipeState = {
       state: 'loading',
-      recipe: null
+      recipe: null,
+      translated: null,
+      mode: 'translated'
     };
     this.renderRecipePage();
 
     try {
       const meal = await mealsApi.lookupById(params.id);
 
+      if (!meal) {
+        this.recipeState = {
+          state: 'empty',
+          recipe: null,
+          translated: null,
+          mode: 'translated'
+        };
+        this.renderRecipePage();
+        return;
+      }
+
+      const recipe = this.mapRecipe(meal);
+      const translated = await this.translateRecipe(recipe);
+
       this.recipeState = {
-        state: meal ? 'success' : 'empty',
-        recipe: meal ? this.mapRecipe(meal) : null
+        state: 'success',
+        recipe,
+        translated,
+        mode: 'translated'
       };
       this.renderRecipePage();
     } catch (_error) {
       this.recipeState = {
         state: 'error',
-        recipe: null
+        recipe: null,
+        translated: null,
+        mode: 'translated'
       };
       this.renderRecipePage();
     }
@@ -121,7 +183,7 @@ export class AppPresenter {
     const normalizedQuery = normalizeText(query);
 
     if (!normalizedQuery) {
-      this.searchState = { state: 'initial', query: '', meals: [], message: '' };
+      this.searchState = { state: 'initial', query: '', translatedQuery: '', meals: [], message: '' };
       this.renderRecipes();
       return;
     }
@@ -130,27 +192,34 @@ export class AppPresenter {
     this.searchState = {
       state: 'loading',
       query: normalizedQuery,
+      translatedQuery: '',
       meals: [],
       message: ''
     };
     this.renderRecipes();
 
     try {
-      let meals = await mealsApi.searchByName(normalizedQuery);
-      let message = `По запросу «${normalizedQuery}» найдено ${meals.length} рецептов.`;
+      const translatedQuery = await translationService.translateSearchQuery(normalizedQuery);
+      let meals = await mealsApi.searchByName(translatedQuery);
+      let message = translatedQuery && translatedQuery !== normalizedQuery
+        ? `По запросу «${normalizedQuery}» найдено ${meals.length} рецептов. Поиск выполнен по английскому запросу «${translatedQuery}».`
+        : `По запросу «${normalizedQuery}» найдено ${meals.length} рецептов.`;
 
       if (!meals.length) {
-        const ingredient = normalizedQuery.split(' ')[0];
+        const ingredient = translatedQuery.split(' ')[0] || normalizedQuery.split(' ')[0];
         const refs = await mealsApi.filterByIngredient(ingredient);
         const loadedMeals = await Promise.all(refs.slice(0, 8).map((item) => mealsApi.lookupById(item.idMeal)));
         meals = loadedMeals.filter(Boolean);
         message = `По названию ничего не найдено, поэтому поиск выполнен по ингредиенту: «${ingredient}».`;
       }
 
+      const translatedMeals = await this.translateMealCards(meals);
+
       this.searchState = {
         state: meals.length ? 'success' : 'empty',
         query: normalizedQuery,
-        meals,
+        translatedQuery,
+        meals: translatedMeals,
         message
       };
       this.renderRecipes();
@@ -158,6 +227,7 @@ export class AppPresenter {
       this.searchState = {
         state: 'error',
         query: normalizedQuery,
+        translatedQuery: '',
         meals: [],
         message: ''
       };
