@@ -9,5 +9,6 @@ export const AppRoute = {
 export const APP_TITLE = 'RecipeLingo';
 
 export const STORAGE_KEYS = {
+  favorites: 'recipelingo:favorites-v1',
   translationCache: 'recipelingo:translation-cache-v1'
 };

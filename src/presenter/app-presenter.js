@@ -3,6 +3,7 @@ import { mealsApi } from '../api/meals-api.js';
 import { render } from '../framework/render.js';
 import { normalizeText } from '../utils/text.js';
 import { translationService } from '../model/translation-service.js';
+import { favoritesService } from '../model/favorites-service.js';
 
 export class AppPresenter {
   constructor({ container, view, model }) {
@@ -30,6 +31,13 @@ export class AppPresenter {
   }
 
   bindCommon() {
+    document.querySelectorAll('[data-favorite]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.toggleFavorite(button.dataset.favorite);
+      });
+    });
+
     document.querySelectorAll('[data-recipe-mode]').forEach((button) => {
       button.addEventListener('click', () => {
         this.recipeState = {
@@ -127,8 +135,20 @@ export class AppPresenter {
   async translateMealCards(meals) {
     return Promise.all(meals.map(async (meal) => ({
       ...meal,
-      translatedTitle: await translationService.translateTitle(meal.strMeal)
+      translatedTitle: await translationService.translateTitle(meal.strMeal),
+      isFavorite: favoritesService.has(meal.idMeal)
     })));
+  }
+
+  getRecipeFavoriteData(recipe, translated) {
+    return {
+      idMeal: recipe.id,
+      strMeal: recipe.title,
+      strMealThumb: recipe.thumb,
+      strCategory: recipe.category,
+      strArea: recipe.area,
+      translatedTitle: translated?.translatedTitle || ''
+    };
   }
 
   renderRecipePage() {
@@ -165,7 +185,8 @@ export class AppPresenter {
         state: 'success',
         recipe,
         translated,
-        mode: 'translated'
+        mode: 'translated',
+        isFavorite: favoritesService.has(recipe.id)
       };
       this.renderRecipePage();
     } catch (_error) {
@@ -236,7 +257,52 @@ export class AppPresenter {
   }
 
   renderFavorites() {
-    this.renderPage(AppRoute.FAVORITES, this.view.getPlaceholderTemplate('Избранное'));
+    const favorites = favoritesService.list().map((item) => ({
+      ...item,
+      isFavorite: true
+    }));
+
+    this.renderPage(AppRoute.FAVORITES, this.view.getFavoritesTemplate(favorites));
+  }
+
+  toggleFavorite(id) {
+    const fromSearch = this.searchState.meals.find((item) => item.idMeal === id);
+    const fromRecipe = this.recipeState.recipe?.id === id
+      ? this.getRecipeFavoriteData(this.recipeState.recipe, this.recipeState.translated)
+      : null;
+    const fromFavorites = favoritesService.list().find((item) => item.idMeal === id);
+    const recipe = fromSearch || fromRecipe || fromFavorites;
+
+    if (!recipe) {
+      return;
+    }
+
+    favoritesService.toggle(recipe);
+
+    this.searchState = {
+      ...this.searchState,
+      meals: this.searchState.meals.map((item) => (
+        item.idMeal === id ? { ...item, isFavorite: favoritesService.has(id) } : item
+      ))
+    };
+
+    if (this.recipeState.recipe?.id === id) {
+      this.recipeState = {
+        ...this.recipeState,
+        isFavorite: favoritesService.has(id)
+      };
+      this.renderRecipePage();
+      return;
+    }
+
+    if (window.location.hash === AppRoute.FAVORITES) {
+      this.renderFavorites();
+      return;
+    }
+
+    if (window.location.hash === AppRoute.RECIPES) {
+      this.renderRecipes();
+    }
   }
 
   renderVocabulary() {

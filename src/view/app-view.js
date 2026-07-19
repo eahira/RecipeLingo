@@ -2,15 +2,26 @@ import { APP_TITLE } from '../const.js';
 import { escapeHtml } from '../utils/text.js';
 
 function recipeCard(meal) {
-  const hasTranslatedTitle = meal.translatedTitle && meal.translatedTitle.toLowerCase() !== meal.strMeal.toLowerCase();
+  const id = meal.idMeal || meal.id;
+  const title = meal.strMeal || meal.title;
+  const thumb = meal.strMealThumb || meal.thumb;
+  const category = meal.strCategory || meal.category || 'Category not specified';
+  const area = meal.strArea || meal.area || 'Cuisine not specified';
+  const hasTranslatedTitle = meal.translatedTitle && meal.translatedTitle.toLowerCase() !== title.toLowerCase();
+  const favoriteLabel = meal.isFavorite ? 'Удалить из избранного' : 'Добавить в избранное';
 
   return `
-    <article class="recipe-card recipe-card--clickable" data-open-recipe="${escapeHtml(meal.idMeal)}" tabindex="0" role="link" aria-label="Открыть рецепт ${escapeHtml(meal.strMeal)}">
-      <img src="${escapeHtml(meal.strMealThumb)}" alt="${escapeHtml(meal.strMeal)}" loading="lazy">
+    <article class="recipe-card recipe-card--clickable" data-open-recipe="${escapeHtml(id)}" tabindex="0" role="link" aria-label="Открыть рецепт ${escapeHtml(title)}">
+      <div class="recipe-card__media">
+        <img src="${escapeHtml(thumb)}" alt="${escapeHtml(title)}" loading="lazy">
+        <button class="favorite-toggle ${meal.isFavorite ? 'is-active' : ''}" type="button" data-favorite="${escapeHtml(id)}" aria-label="${favoriteLabel}" aria-pressed="${meal.isFavorite ? 'true' : 'false'}" title="${favoriteLabel}">
+          <span aria-hidden="true">♡</span>
+        </button>
+      </div>
       <div class="recipe-card__body">
-        <h2>${escapeHtml(meal.strMeal)}</h2>
+        <h2>${escapeHtml(title)}</h2>
         ${hasTranslatedTitle ? `<p>${escapeHtml(meal.translatedTitle)}</p>` : ''}
-        <p>${escapeHtml(meal.strCategory || 'Category not specified')} · ${escapeHtml(meal.strArea || 'Cuisine not specified')}</p>
+        <p>${escapeHtml(category)} · ${escapeHtml(area)}</p>
       </div>
     </article>
   `;
@@ -90,7 +101,7 @@ export class AppView {
     `;
   }
 
-  getRecipeTemplate({ recipe, translated, state, mode }) {
+  getRecipeTemplate({ recipe, translated, state, mode, isFavorite }) {
     if (state === 'loading') {
       return '<div class="state">Загружаю рецепт...</div>';
     }
@@ -133,6 +144,7 @@ export class AppView {
             <p class="eyebrow">${escapeHtml(recipe.category)}${recipe.area ? ` · ${escapeHtml(recipe.area)}` : ''}</p>
             <h1>${escapeHtml(recipe.title)}</h1>
             ${translatedRecipe.translatedTitle ? `<p>${escapeHtml(translatedRecipe.translatedTitle)}</p>` : ''}
+            <button type="button" data-favorite="${escapeHtml(recipe.id)}">${isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}</button>
           </div>
         </div>
         <section class="ingredients">
@@ -157,6 +169,18 @@ export class AppView {
         </section>
         ${recipe.youtube ? `<a class="video-link" href="${escapeHtml(recipe.youtube)}" target="_blank" rel="noreferrer">Открыть видео рецепта</a>` : ''}
       </article>
+    `;
+  }
+
+  getFavoritesTemplate(favorites) {
+    return `
+      <section class="page-head">
+        <h1>Избранное</h1>
+        <p>Рецепты сохраняются в браузере.</p>
+      </section>
+      ${favorites.length
+    ? `<div class="recipe-grid">${favorites.map(recipeCard).join('')}</div>`
+    : '<div class="state"><h2>Пока нет избранных рецептов</h2><p>Откройте рецепт и нажмите на сердечко, чтобы сохранить его здесь.</p><a class="button-link" href="#/recipes">Найти рецепт</a></div>'}
     `;
   }
 
