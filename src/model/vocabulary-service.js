@@ -14,7 +14,7 @@ function writeVocabulary(items) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.vocabulary, JSON.stringify(items));
   } catch (_error) {
-    // The app keeps working even if the browser cannot save local data.
+    void _error;
   }
 }
 
@@ -62,6 +62,30 @@ export const vocabularyService = {
   remove(idOrWord) {
     const normalized = normalizeClickedWord(idOrWord);
     const next = this.list().filter((item) => item.id !== idOrWord && item.word !== normalized);
+    writeVocabulary(next);
+    return next;
+  },
+
+  updateStats(word, result) {
+    const normalized = normalizeClickedWord(word);
+    const next = this.list().map((item) => {
+      if (item.word !== normalized) {
+        return item;
+      }
+
+      const stats = item.stats || {};
+      const isCorrect = result === 'known';
+
+      return {
+        ...item,
+        stats: {
+          reviewCount: (stats.reviewCount || 0) + 1,
+          correctCount: (stats.correctCount || 0) + (isCorrect ? 1 : 0),
+          wrongCount: (stats.wrongCount || 0) + (isCorrect ? 0 : 1)
+        }
+      };
+    });
+
     writeVocabulary(next);
     return next;
   }

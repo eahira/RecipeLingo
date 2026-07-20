@@ -266,6 +266,14 @@ export class AppView {
     `;
   }
 
+  getTrainerTemplate() {
+    return `
+      <section class="trainer-shell">
+        <div id="trainer-root"></div>
+      </section>
+    `;
+  }
+
   getNotFoundTemplate() {
     return `
       <section class="page-section">

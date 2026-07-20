@@ -13,7 +13,7 @@ function writeFavorites(items) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(items));
   } catch (_error) {
-    // Favorites are optional browser data, so the app can continue without saving.
+    void _error;
   }
 }
 

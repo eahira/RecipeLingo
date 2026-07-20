@@ -12,7 +12,7 @@ function writeCache(cache) {
   try {
     window.localStorage.setItem(STORAGE_KEYS.translationCache, JSON.stringify(cache));
   } catch (_error) {
-    // If localStorage is full or unavailable, the app can still work without cache.
+    void _error;
   }
 }
 

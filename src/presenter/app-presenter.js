@@ -418,7 +418,7 @@ export class AppPresenter {
   }
 
   renderTrainer() {
-    this.renderPage(AppRoute.TRAINER, this.view.getPlaceholderTemplate('Тренировка'));
+    this.renderPage(AppRoute.TRAINER, this.view.getTrainerTemplate());
   }
 
   renderNotFound() {
