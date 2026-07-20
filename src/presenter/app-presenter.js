@@ -1,9 +1,11 @@
 import { AppRoute } from '../const.js';
+import { dictionaryApi } from '../api/dictionary-api.js';
 import { mealsApi } from '../api/meals-api.js';
 import { render } from '../framework/render.js';
-import { normalizeText } from '../utils/text.js';
+import { findSentence, normalizeClickedWord, normalizeText } from '../utils/text.js';
 import { translationService } from '../model/translation-service.js';
 import { favoritesService } from '../model/favorites-service.js';
+import { vocabularyService } from '../model/vocabulary-service.js';
 
 export class AppPresenter {
   constructor({ container, view, model }) {
@@ -23,6 +25,9 @@ export class AppPresenter {
       translated: null,
       mode: 'translated'
     };
+    this.vocabularyQuery = '';
+    this.wordEntry = null;
+    this.lastWordButton = null;
   }
 
   renderPage(activeRoute, content) {
@@ -69,6 +74,13 @@ export class AppPresenter {
 
         event.preventDefault();
         openRecipe();
+      });
+    });
+
+    document.querySelectorAll('.word-token').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.openWordModal(button.dataset.word, button);
       });
     });
   }
@@ -306,7 +318,103 @@ export class AppPresenter {
   }
 
   renderVocabulary() {
-    this.renderPage(AppRoute.VOCABULARY, this.view.getPlaceholderTemplate('Словарь'));
+    this.renderPage(AppRoute.VOCABULARY, this.view.getVocabularyTemplate(vocabularyService.list(), this.vocabularyQuery));
+
+    document.querySelector('[data-vocabulary-form]')?.addEventListener('input', (event) => {
+      if (event.target?.name !== 'query') {
+        return;
+      }
+
+      this.vocabularyQuery = event.target.value;
+      this.renderVocabulary();
+    });
+
+    document.querySelectorAll('[data-remove-word]').forEach((button) => {
+      button.addEventListener('click', () => {
+        vocabularyService.remove(button.dataset.removeWord);
+        this.renderVocabulary();
+      });
+    });
+  }
+
+  renderModal(content) {
+    this.closeModal();
+    document.body.insertAdjacentHTML('beforeend', content);
+    document.querySelector('[data-close-modal]')?.addEventListener('click', () => this.closeModal());
+    document.querySelector('[data-modal-backdrop]')?.addEventListener('click', (event) => {
+      if (event.target === event.currentTarget) {
+        this.closeModal();
+      }
+    });
+    document.addEventListener('keydown', this.handleModalKeydown);
+    document.querySelector('.modal')?.focus();
+  }
+
+  handleModalKeydown = (event) => {
+    if (event.key === 'Escape') {
+      this.closeModal();
+    }
+  };
+
+  closeModal() {
+    document.querySelector('[data-modal-backdrop]')?.remove();
+    document.removeEventListener('keydown', this.handleModalKeydown);
+    this.lastWordButton?.focus();
+  }
+
+  bindModalActions() {
+    document.querySelector('[data-play-audio]')?.addEventListener('click', (event) => {
+      const audio = new window.Audio(event.currentTarget.dataset.playAudio);
+      audio.play();
+    });
+
+    document.querySelector('[data-save-word]')?.addEventListener('click', () => {
+      if (!this.wordEntry) {
+        return;
+      }
+
+      if (vocabularyService.has(this.wordEntry.word)) {
+        vocabularyService.remove(this.wordEntry.word);
+      } else {
+        vocabularyService.add(this.wordEntry);
+      }
+
+      this.closeModal();
+    });
+  }
+
+  async openWordModal(word, sourceButton) {
+    const normalizedWord = normalizeClickedWord(word);
+
+    if (!normalizedWord || /^\d+$/.test(normalizedWord)) {
+      return;
+    }
+
+    this.lastWordButton = sourceButton;
+    this.renderModal('<div class="modal-backdrop" data-modal-backdrop><section class="modal" role="dialog" aria-modal="true"><button class="modal__close" type="button" data-close-modal aria-label="Закрыть">×</button><div class="state">Загружаю слово...</div></section></div>');
+
+    const context = findSentence(this.recipeState.recipe?.instructions || '', normalizedWord);
+    const [translation, translatedContext, dictionary] = await Promise.all([
+      translationService.translateWord(normalizedWord),
+      translationService.translateContext(context),
+      dictionaryApi.lookup(normalizedWord)
+    ]);
+
+    this.wordEntry = {
+      word: normalizedWord,
+      translation,
+      phonetic: dictionary?.phonetic || '',
+      audio: dictionary?.audio || '',
+      partOfSpeech: dictionary?.partOfSpeech || '',
+      definition: dictionary?.definition || '',
+      context,
+      translatedContext,
+      recipeId: this.recipeState.recipe?.id || '',
+      recipeTitle: this.recipeState.recipe?.title || ''
+    };
+
+    this.renderModal(this.view.getWordModalTemplate(this.wordEntry, vocabularyService.has(normalizedWord)));
+    this.bindModalActions();
   }
 
   renderTrainer() {

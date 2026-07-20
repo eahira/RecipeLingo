@@ -1,5 +1,5 @@
 import { APP_TITLE } from '../const.js';
-import { escapeHtml } from '../utils/text.js';
+import { clickableText, escapeHtml, formatDate } from '../utils/text.js';
 
 function recipeCard(meal) {
   const id = meal.idMeal || meal.id;
@@ -129,7 +129,7 @@ export class AppView {
     const pairedInstructions = instructionPairs.map((item) => `
       <div class="instruction-pair">
         <p class="instruction-pair__label">Оригинал</p>
-        <div class="text-block">${escapeHtml(item.original)}</div>
+        <div class="text-block">${clickableText(item.original)}</div>
         <p class="instruction-pair__label">Перевод</p>
         <div class="text-block">${escapeHtml(item.translation || 'Перевод временно недоступен.')}</div>
       </div>
@@ -164,7 +164,7 @@ export class AppView {
             `).join('')}
           </div>
           ${mode === 'translated' ? `<div class="text-block">${escapeHtml(translatedInstructions || 'Перевод временно недоступен.')}</div>` : ''}
-          ${mode === 'original' ? `<div class="text-block">${escapeHtml(recipe.instructions)}</div>` : ''}
+          ${mode === 'original' ? `<div class="text-block">${clickableText(recipe.instructions)}</div>` : ''}
           ${mode === 'both' ? `<div class="paired-instructions">${pairedInstructions}</div>` : ''}
         </section>
         ${recipe.youtube ? `<a class="video-link" href="${escapeHtml(recipe.youtube)}" target="_blank" rel="noreferrer">Открыть видео рецепта</a>` : ''}
@@ -181,6 +181,80 @@ export class AppView {
       ${favorites.length
     ? `<div class="recipe-grid">${favorites.map(recipeCard).join('')}</div>`
     : '<div class="state"><h2>Пока нет избранных рецептов</h2><p>Откройте рецепт и нажмите на сердечко, чтобы сохранить его здесь.</p><a class="button-link" href="#/recipes">Найти рецепт</a></div>'}
+    `;
+  }
+
+  getVocabularyTemplate(words, query = '') {
+    const normalizedQuery = query.toLowerCase();
+    const filteredWords = words.filter((item) => [
+      item.word,
+      item.translation,
+      item.context,
+      item.recipeTitle
+    ].some((value) => String(value || '').toLowerCase().includes(normalizedQuery)));
+
+    return `
+      <section class="page-head">
+        <h1>Мой словарь</h1>
+        <p>Слова, контекст и статистика повторений.</p>
+      </section>
+      <form class="vocabulary-toolbar" data-vocabulary-form>
+        <label for="vocabulary-query">Поиск</label>
+        <input id="vocabulary-query" name="query" value="${escapeHtml(query)}" placeholder="слово или перевод" autocomplete="off">
+        <a class="button-link ${words.length ? '' : 'is-disabled'}" href="${words.length ? '#/trainer' : '#/vocabulary'}" aria-disabled="${words.length ? 'false' : 'true'}">Запустить тренировку</a>
+      </form>
+      ${words.length
+    ? `<div class="vocabulary-list">${filteredWords.map((item) => `
+        <article class="word-card">
+          <div>
+            <h2>${escapeHtml(item.word)} ${item.phonetic ? `<span>${escapeHtml(item.phonetic)}</span>` : ''}</h2>
+            <p><strong>${escapeHtml(item.translation || 'перевод не найден')}</strong>${item.partOfSpeech ? ` · ${escapeHtml(item.partOfSpeech)}` : ''}</p>
+            ${item.context ? `<p>${escapeHtml(item.context)}</p>` : ''}
+            <p class="muted">${escapeHtml(item.recipeTitle || 'Рецепт не указан')}${item.createdAt ? ` · ${escapeHtml(formatDate(item.createdAt))}` : ''} · тренировок: ${escapeHtml(item.stats?.reviewCount || 0)}</p>
+          </div>
+          <button type="button" data-remove-word="${escapeHtml(item.word)}">Удалить</button>
+        </article>
+      `).join('')}</div>`
+    : `<div class="state">
+        <h2>Здесь появятся сохранённые слова</h2>
+        <p>Откройте английский текст рецепта, нажмите на незнакомое слово и добавьте его в словарь.</p>
+        <a class="button-link" href="#/recipes">Найти рецепт</a>
+      </div>`}
+      ${words.length && !filteredWords.length ? '<div class="state">По этому запросу слов не найдено.</div>' : ''}
+    `;
+  }
+
+  getWordModalTemplate(entry, isSaved) {
+    const partsOfSpeech = {
+      verb: 'глагол',
+      noun: 'существительное',
+      adjective: 'прилагательное',
+      adverb: 'наречие'
+    };
+    const partOfSpeech = partsOfSpeech[entry.partOfSpeech] || entry.partOfSpeech || 'часть речи не указана';
+
+    return `
+      <div class="modal-backdrop" data-modal-backdrop>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="word-modal-title" tabindex="-1">
+          <button class="modal__close" type="button" data-close-modal aria-label="Закрыть">×</button>
+          <div class="word-modal">
+            <h2 id="word-modal-title">${escapeHtml(entry.word)}</h2>
+            <p class="muted">Автоматический перевод</p>
+            <p class="translation">${escapeHtml(entry.translation || 'перевод не найден')}</p>
+            ${entry.phonetic ? `<p>${escapeHtml(entry.phonetic)}</p>` : ''}
+            ${entry.audio ? `<button type="button" data-play-audio="${escapeHtml(entry.audio)}" aria-label="Прослушать произношение слова ${escapeHtml(entry.word)}">Прослушать</button>` : ''}
+            <p><strong>${escapeHtml(partOfSpeech)}</strong></p>
+            <p class="muted">Определение на английском</p>
+            <p>${escapeHtml(entry.definition || 'Описание не найдено.')}</p>
+            <p class="muted">Оригинальный контекст</p>
+            <blockquote>${escapeHtml(entry.context || '')}</blockquote>
+            <p class="muted">Перевод контекста</p>
+            <blockquote>${escapeHtml(entry.translatedContext || 'Перевод контекста временно недоступен.')}</blockquote>
+            <p class="muted">${escapeHtml(entry.recipeTitle || '')}</p>
+            <button type="button" data-save-word>${isSaved ? 'Убрать из словаря' : 'Сохранить слово'}</button>
+          </div>
+        </section>
+      </div>
     `;
   }
 

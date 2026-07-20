@@ -90,6 +90,24 @@ export const translationService = {
     });
   },
 
+  translateWord(word) {
+    return translate(word, {
+      sourceLanguage: 'en',
+      targetLanguage: 'ru',
+      contentType: 'word',
+      fallback: ''
+    });
+  },
+
+  translateContext(context) {
+    return translate(context, {
+      sourceLanguage: 'en',
+      targetLanguage: 'ru',
+      contentType: 'context',
+      fallback: ''
+    });
+  },
+
   async translateInstructions(instructions) {
     const blocks = splitInstructionBlocks(instructions);
 
