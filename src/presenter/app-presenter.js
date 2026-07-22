@@ -17,7 +17,12 @@ export class AppPresenter {
       query: '',
       translatedQuery: '',
       meals: [],
-      message: ''
+      message: '',
+      selectedCategory: '',
+      selectedArea: '',
+      categories: [],
+      areas: [],
+      filtersLoading: false
     };
     this.recipeState = {
       state: 'initial',
@@ -61,6 +66,24 @@ export class AppPresenter {
       });
     });
 
+    document.querySelector('[data-clear-search]')?.addEventListener('click', () => {
+      this.clearSearch();
+    });
+
+    document.querySelectorAll('[data-filter-category]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.selectCategory(button.dataset.filterCategory);
+      });
+    });
+
+    document.querySelectorAll('[data-filter-area]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.selectArea(button.dataset.filterArea);
+      });
+    });
+
     document.querySelectorAll('[data-open-recipe]').forEach((card) => {
       const openRecipe = () => {
         window.location.hash = `#/recipe/${card.dataset.openRecipe}`;
@@ -90,7 +113,47 @@ export class AppPresenter {
   }
 
   renderRecipes() {
+    if (!this.searchState.filtersLoading && !this.searchState.categories.length && !this.searchState.areas.length) {
+      window.setTimeout(() => this.loadRecipeFilters(), 0);
+    }
+
     this.renderPage(AppRoute.RECIPES, this.view.getRecipesTemplate(this.searchState));
+  }
+
+  async loadRecipeFilters() {
+    if (this.searchState.filtersLoading || this.searchState.categories.length || this.searchState.areas.length) {
+      return;
+    }
+
+    this.searchState = {
+      ...this.searchState,
+      filtersLoading: true
+    };
+    this.renderRecipes();
+
+    try {
+      const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
+      const mealsByLetter = await Promise.all(alphabet.map((letter) => mealsApi.searchByFirstLetter(letter)));
+      const meals = mealsByLetter.flat();
+      const categories = [...new Set(meals.map((item) => normalizeText(item.strCategory)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'en'));
+      const areas = [...new Set(meals.map((item) => normalizeText(item.strArea)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'en'));
+
+      this.searchState = {
+        ...this.searchState,
+        categories,
+        areas,
+        filtersLoading: false
+      };
+      this.renderRecipes();
+    } catch (_error) {
+      this.searchState = {
+        ...this.searchState,
+        filtersLoading: false
+      };
+      this.renderRecipes();
+    }
   }
 
   mapRecipe(meal) {
@@ -150,6 +213,138 @@ export class AppPresenter {
       translatedTitle: await translationService.translateTitle(meal.strMeal),
       isFavorite: favoritesService.has(meal.idMeal)
     })));
+  }
+
+  async lookupRecipeRefs(refs, limit = 12) {
+    const loadedMeals = await Promise.all((refs || []).slice(0, limit).map((item) => mealsApi.lookupById(item.idMeal)));
+    return loadedMeals.filter(Boolean);
+  }
+
+  intersectRecipeRefs(firstRefs, secondRefs) {
+    const secondIds = new Set((secondRefs || []).map((item) => item.idMeal).filter(Boolean));
+    return (firstRefs || []).filter((item) => secondIds.has(item.idMeal));
+  }
+
+  filterMealsByQuery(meals, query) {
+    const normalizedQuery = normalizeText(query).toLocaleLowerCase('en-US');
+
+    if (!normalizedQuery) {
+      return meals;
+    }
+
+    const terms = normalizedQuery.split(' ').filter(Boolean);
+    return meals.filter((meal) => {
+      const recipe = this.mapRecipe(meal);
+      const searchableText = [
+        recipe.title,
+        recipe.category,
+        recipe.area,
+        ...recipe.ingredients.map((item) => item.originalName)
+      ].join(' ').toLocaleLowerCase('en-US');
+
+      return terms.every((term) => searchableText.includes(term));
+    });
+  }
+
+  selectCategory(category) {
+    const selectedCategory = this.searchState.selectedCategory === category ? '' : category;
+    this.searchWithFilters({ selectedCategory });
+  }
+
+  selectArea(area) {
+    const selectedArea = this.searchState.selectedArea === area ? '' : area;
+    this.searchWithFilters({ selectedArea });
+  }
+
+  clearSearch() {
+    this.searchState = {
+      ...this.searchState,
+      state: 'initial',
+      query: '',
+      translatedQuery: '',
+      meals: [],
+      message: '',
+      selectedCategory: '',
+      selectedArea: ''
+    };
+    window.location.hash = AppRoute.RECIPES;
+    this.renderRecipes();
+  }
+
+  async searchWithFilters({
+    query = this.searchState.query,
+    selectedCategory = this.searchState.selectedCategory,
+    selectedArea = this.searchState.selectedArea
+  } = {}) {
+    const normalizedQuery = normalizeText(query);
+
+    if (!selectedCategory && !selectedArea) {
+      await this.search(normalizedQuery);
+      return;
+    }
+
+    window.location.hash = AppRoute.RECIPES;
+    this.searchState = {
+      ...this.searchState,
+      state: 'loading',
+      query: normalizedQuery,
+      translatedQuery: '',
+      meals: [],
+      message: '',
+      selectedCategory,
+      selectedArea
+    };
+    this.renderRecipes();
+
+    try {
+      let meals = [];
+
+      if (selectedCategory && selectedArea) {
+        const [categoryRefs, areaRefs] = await Promise.all([
+          mealsApi.filterByCategory(selectedCategory),
+          mealsApi.filterByArea(selectedArea)
+        ]);
+        meals = await this.lookupRecipeRefs(this.intersectRecipeRefs(categoryRefs, areaRefs));
+      } else if (selectedCategory) {
+        meals = await this.lookupRecipeRefs(await mealsApi.filterByCategory(selectedCategory));
+      } else {
+        meals = await this.lookupRecipeRefs(await mealsApi.filterByArea(selectedArea));
+      }
+
+      meals = this.filterMealsByQuery(meals, normalizedQuery);
+      const translatedMeals = await this.translateMealCards(meals);
+      const filterParts = [];
+
+      if (selectedCategory) {
+        filterParts.push(`категория: ${selectedCategory}`);
+      }
+      if (selectedArea) {
+        filterParts.push(`кухня: ${selectedArea}`);
+      }
+      if (normalizedQuery) {
+        filterParts.push(`поиск: «${normalizedQuery}»`);
+      }
+
+      this.searchState = {
+        ...this.searchState,
+        state: meals.length ? 'success' : 'empty',
+        query: normalizedQuery,
+        translatedQuery: '',
+        meals: translatedMeals,
+        message: `${meals.length ? 'Найдено' : 'Не найдено'} ${meals.length} рецептов. Фильтры: ${filterParts.join(', ')}.`,
+        selectedCategory,
+        selectedArea
+      };
+      this.renderRecipes();
+    } catch (_error) {
+      this.searchState = {
+        ...this.searchState,
+        state: 'error',
+        meals: [],
+        message: ''
+      };
+      this.renderRecipes();
+    }
   }
 
   getRecipeFavoriteData(recipe, translated) {
@@ -215,19 +410,27 @@ export class AppPresenter {
   async search(query) {
     const normalizedQuery = normalizeText(query);
 
+    if (this.searchState.selectedCategory || this.searchState.selectedArea) {
+      await this.searchWithFilters({ query: normalizedQuery });
+      return;
+    }
+
     if (!normalizedQuery) {
-      this.searchState = { state: 'initial', query: '', translatedQuery: '', meals: [], message: '' };
+      this.searchState = { ...this.searchState, state: 'initial', query: '', translatedQuery: '', meals: [], message: '', selectedCategory: '', selectedArea: '' };
       this.renderRecipes();
       return;
     }
 
     window.location.hash = AppRoute.RECIPES;
     this.searchState = {
+      ...this.searchState,
       state: 'loading',
       query: normalizedQuery,
       translatedQuery: '',
       meals: [],
-      message: ''
+      message: '',
+      selectedCategory: '',
+      selectedArea: ''
     };
     this.renderRecipes();
 
@@ -249,15 +452,19 @@ export class AppPresenter {
       const translatedMeals = await this.translateMealCards(meals);
 
       this.searchState = {
+        ...this.searchState,
         state: meals.length ? 'success' : 'empty',
         query: normalizedQuery,
         translatedQuery,
         meals: translatedMeals,
-        message
+        message,
+        selectedCategory: '',
+        selectedArea: ''
       };
       this.renderRecipes();
     } catch (_error) {
       this.searchState = {
+        ...this.searchState,
         state: 'error',
         query: normalizedQuery,
         translatedQuery: '',

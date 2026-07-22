@@ -5,8 +5,8 @@ function recipeCard(meal) {
   const id = meal.idMeal || meal.id;
   const title = meal.strMeal || meal.title;
   const thumb = meal.strMealThumb || meal.thumb;
-  const category = meal.strCategory || meal.category || 'Category not specified';
-  const area = meal.strArea || meal.area || 'Cuisine not specified';
+  const category = meal.strCategory || meal.category || 'Категория не указана';
+  const area = meal.strArea || meal.area || 'Кухня не указана';
   const hasTranslatedTitle = meal.translatedTitle && meal.translatedTitle.toLowerCase() !== title.toLowerCase();
   const favoriteLabel = meal.isFavorite ? 'Удалить из избранного' : 'Добавить в избранное';
 
@@ -15,13 +15,17 @@ function recipeCard(meal) {
       <div class="recipe-card__media">
         <img src="${escapeHtml(thumb)}" alt="${escapeHtml(title)}" loading="lazy">
         <button class="favorite-toggle ${meal.isFavorite ? 'is-active' : ''}" type="button" data-favorite="${escapeHtml(id)}" aria-label="${favoriteLabel}" aria-pressed="${meal.isFavorite ? 'true' : 'false'}" title="${favoriteLabel}">
-          <span aria-hidden="true">♡</span>
+          <span aria-hidden="true">${meal.isFavorite ? '&#9829;' : '&#9825;'}</span>
         </button>
       </div>
       <div class="recipe-card__body">
         <h2>${escapeHtml(title)}</h2>
         ${hasTranslatedTitle ? `<p>${escapeHtml(meal.translatedTitle)}</p>` : ''}
-        <p>${escapeHtml(category)} · ${escapeHtml(area)}</p>
+        <p class="meta">
+          <button class="meta-link" type="button" data-filter-category="${escapeHtml(category)}">${escapeHtml(category)}</button>
+          <span aria-hidden="true">·</span>
+          <button class="meta-link" type="button" data-filter-area="${escapeHtml(area)}">${escapeHtml(area)}</button>
+        </p>
       </div>
     </article>
   `;
@@ -79,21 +83,48 @@ export class AppView {
     `;
   }
 
-  getRecipesTemplate({ state, query, translatedQuery, meals, message }) {
+  getRecipesTemplate({
+    state,
+    query,
+    translatedQuery,
+    meals = [],
+    message,
+    selectedCategory = '',
+    selectedArea = '',
+    categories = [],
+    areas = [],
+    filtersLoading = false
+  }) {
+    const categoryButtonClass = (item) => (item === selectedCategory ? ' class="is-active" aria-pressed="true"' : ' aria-pressed="false"');
+    const areaButtonClass = (item) => (item === selectedArea ? ' class="is-active" aria-pressed="true"' : ' aria-pressed="false"');
+
     return `
       <section class="page-head">
         <h1>Поиск рецептов</h1>
-        <p>Введите название блюда или ингредиент — на русском или английском.</p>
+        <p>Введите название блюда, ингредиент или кухню — на русском или английском.</p>
       </section>
       <form class="search-panel" data-search-form>
         <label for="recipes-query">Поиск</label>
         <div class="search-panel__row">
           <input id="recipes-query" name="query" value="${escapeHtml(query)}" placeholder="Что хотите приготовить?">
           <button type="submit">Искать</button>
+          <button type="button" data-clear-search>Очистить</button>
         </div>
       </form>
+      <section class="search-filters" aria-label="Фильтры поиска">
+        <div class="filter-group">
+          <h2>Категории</h2>
+          ${filtersLoading ? '<p class="muted">Загружаю категории...</p>' : ''}
+          ${categories.length ? `<div class="filter-row">${categories.map((item) => `<button type="button" data-filter-category="${escapeHtml(item)}"${categoryButtonClass(item)}>${escapeHtml(item)}</button>`).join('')}</div>` : ''}
+        </div>
+        <div class="filter-group">
+          <h2>Кухни</h2>
+          ${filtersLoading ? '<p class="muted">Загружаю кухни...</p>' : ''}
+          ${areas.length ? `<div class="filter-row">${areas.map((item) => `<button type="button" data-filter-area="${escapeHtml(item)}"${areaButtonClass(item)}>${escapeHtml(item)}</button>`).join('')}</div>` : ''}
+        </div>
+      </section>
       ${state === 'loading' ? '<div class="state">Ищу рецепты...</div>' : ''}
-      ${state === 'error' ? '<div class="state state--error">Не получилось загрузить рецепты. Попробуйте ещё раз.</div>' : ''}
+      ${state === 'error' ? '<div class="state state--error">Не получилось загрузить рецепты. Попробуйте еще раз.</div>' : ''}
       ${message ? `<p class="notice">${escapeHtml(message)}</p>` : ''}
       ${translatedQuery && translatedQuery !== query ? `<p class="muted">Английский запрос для TheMealDB: ${escapeHtml(translatedQuery)}</p>` : ''}
       ${state === 'empty' ? '<div class="state">Ничего не найдено. Попробуйте другой запрос.</div>' : ''}
@@ -107,7 +138,7 @@ export class AppView {
     }
 
     if (state === 'error') {
-      return '<div class="state state--error">Не получилось открыть рецепт. Вернитесь к поиску и попробуйте ещё раз.</div>';
+      return '<div class="state state--error">Не получилось открыть рецепт. Вернитесь к поиску и попробуйте еще раз.</div>';
     }
 
     if (!recipe) {
@@ -118,11 +149,9 @@ export class AppView {
     const instructionPairs = translatedRecipe.instructionPairs || [];
     const ingredients = translatedRecipe.ingredients.map((item) => `
       <li>
-        <span>
-          <strong>${escapeHtml(item.translatedName || item.originalName)}</strong>
-          <small>${escapeHtml(item.originalName)}${item.originalMeasure ? ` · ${escapeHtml(item.originalMeasure)}` : ''}</small>
-        </span>
-        ${(item.translatedMeasure || item.originalMeasure) ? `<strong>${escapeHtml(item.translatedMeasure || item.originalMeasure)}</strong>` : ''}
+        <strong class="ingredient-primary">${escapeHtml(item.translatedName || item.originalName)}</strong>
+        ${(item.translatedMeasure || item.originalMeasure) ? `<span class="ingredient-amount">${escapeHtml(item.translatedMeasure || item.originalMeasure)}</span>` : ''}
+        <small>${escapeHtml(item.originalName)}${item.originalMeasure ? ` · ${escapeHtml(item.originalMeasure)}` : ''}</small>
       </li>
     `).join('');
     const translatedInstructions = instructionPairs.map((item) => item.translation).filter(Boolean).join('\n\n');

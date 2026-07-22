@@ -204,6 +204,50 @@ p {
   background: #fff;
 }
 
+.search-filters {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.filter-group h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.filter-row button,
+.meta-link {
+  min-height: 36px;
+  padding: 0.45rem 0.8rem;
+  border-color: var(--accent);
+  color: var(--accent);
+  background: transparent;
+}
+
+.filter-row button:hover,
+.filter-row button:focus-visible,
+.meta-link:hover,
+.meta-link:focus-visible {
+  color: var(--text);
+  background: rgba(71, 113, 68, 0.08);
+}
+
+.filter-row button.is-active {
+  color: #fff;
+  background: var(--accent);
+}
+
 .notice,
 .state {
   margin: 1rem 0;
@@ -281,6 +325,21 @@ p {
 
 .recipe-card__body p {
   margin-bottom: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.meta-link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dotted rgba(71, 113, 68, 0.55);
+  border-radius: 0;
 }
 
 .back-link {
