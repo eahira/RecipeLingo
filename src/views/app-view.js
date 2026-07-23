@@ -101,12 +101,12 @@ export class AppView {
     return `
       <section class="page-head">
         <h1>Поиск рецептов</h1>
-        <p>Введите название блюда, ингредиент или кухню — на русском или английском.</p>
+        <p>Введите название блюда, ингредиент или кухню — на русском или английском. Например: шоколадный торт, chocolate cake, pasta, Italian.</p>
       </section>
       <form class="search-panel" data-search-form>
         <label for="recipes-query">Поиск</label>
         <div class="search-panel__row">
-          <input id="recipes-query" name="query" value="${escapeHtml(query)}" placeholder="Что хотите приготовить?">
+          <input id="recipes-query" name="query" value="${escapeHtml(query)}" placeholder="шоколадный торт, pasta или Italian">
           <button type="submit">Искать</button>
           <button type="button" data-clear-search>Очистить</button>
         </div>

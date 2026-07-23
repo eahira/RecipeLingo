@@ -33,6 +33,7 @@ export class AppPresenter {
     this.vocabularyQuery = '';
     this.wordEntry = null;
     this.lastWordButton = null;
+    this.filtersPromise = null;
   }
 
   renderPage(activeRoute, content) {
@@ -121,8 +122,12 @@ export class AppPresenter {
   }
 
   async loadRecipeFilters() {
-    if (this.searchState.filtersLoading || this.searchState.categories.length || this.searchState.areas.length) {
-      return;
+    if (this.searchState.categories.length && this.searchState.areas.length) {
+      return this.searchState;
+    }
+
+    if (this.filtersPromise) {
+      return this.filtersPromise;
     }
 
     this.searchState = {
@@ -131,6 +136,11 @@ export class AppPresenter {
     };
     this.renderRecipes();
 
+    this.filtersPromise = this.fetchRecipeFilters();
+    return this.filtersPromise;
+  }
+
+  async fetchRecipeFilters() {
     try {
       const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
       const mealsByLetter = await Promise.all(alphabet.map((letter) => mealsApi.searchByFirstLetter(letter)));
@@ -153,7 +163,11 @@ export class AppPresenter {
         filtersLoading: false
       };
       this.renderRecipes();
+    } finally {
+      this.filtersPromise = null;
     }
+
+    return this.searchState;
   }
 
   mapRecipe(meal) {
@@ -244,6 +258,36 @@ export class AppPresenter {
 
       return terms.every((term) => searchableText.includes(term));
     });
+  }
+
+  normalizeFilterValue(value) {
+    return normalizeText(value).toLocaleLowerCase('en-US');
+  }
+
+  findFilterMatch(query) {
+    const normalizedQuery = this.normalizeFilterValue(query);
+
+    if (!normalizedQuery) {
+      return null;
+    }
+
+    const selectedCategory = this.searchState.categories.find((item) => (
+      this.normalizeFilterValue(item) === normalizedQuery
+    ));
+
+    if (selectedCategory) {
+      return { selectedCategory, selectedArea: '' };
+    }
+
+    const selectedArea = this.searchState.areas.find((item) => (
+      this.normalizeFilterValue(item) === normalizedQuery
+    ));
+
+    if (selectedArea) {
+      return { selectedCategory: '', selectedArea };
+    }
+
+    return null;
   }
 
   selectCategory(category) {
@@ -436,6 +480,19 @@ export class AppPresenter {
 
     try {
       const translatedQuery = await translationService.translateSearchQuery(normalizedQuery);
+
+      await this.loadRecipeFilters();
+      const filterMatch = this.findFilterMatch(translatedQuery || normalizedQuery);
+
+      if (filterMatch) {
+        await this.searchWithFilters({
+          query: '',
+          selectedCategory: filterMatch.selectedCategory,
+          selectedArea: filterMatch.selectedArea
+        });
+        return;
+      }
+
       let meals = await mealsApi.searchByName(translatedQuery);
       let message = translatedQuery && translatedQuery !== normalizedQuery
         ? `По запросу «${normalizedQuery}» найдено ${meals.length} рецептов. Поиск выполнен по английскому запросу «${translatedQuery}».`
