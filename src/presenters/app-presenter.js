@@ -3,9 +3,9 @@ import { dictionaryApi } from '../api/dictionary-api.js';
 import { mealsApi } from '../api/meals-api.js';
 import { render } from '../framework/render.js';
 import { findSentence, normalizeClickedWord, normalizeText } from '../utils/text.js';
-import { translationService } from '../model/translation-service.js';
-import { favoritesService } from '../model/favorites-service.js';
-import { vocabularyService } from '../model/vocabulary-service.js';
+import { translationService } from '../services/translation-service.js';
+import { favoritesService } from '../services/favorites-service.js';
+import { vocabularyService } from '../services/vocabulary-service.js';
 
 export class AppPresenter {
   constructor({ container, view, model }) {

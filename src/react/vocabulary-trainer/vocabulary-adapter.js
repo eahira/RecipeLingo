@@ -1,4 +1,4 @@
-import { vocabularyService } from '../../model/vocabulary-service.js';
+import { vocabularyService } from '../../services/vocabulary-service.js';
 
 export const vocabularyAdapter = {
   getWords() {

@@ -1,8 +1,8 @@
 import './styles/main.scss';
-import { AppModel } from './model/app-model.js';
-import { AppPresenter } from './presenter/app-presenter.js';
-import { Router } from './framework/router.js';
-import { AppView } from './view/app-view.js';
+import { AppModel } from './models/app-model.js';
+import { AppPresenter } from './presenters/app-presenter.js';
+import { Router } from './router/router.js';
+import { AppView } from './views/app-view.js';
 
 let trainerModule = null;
 

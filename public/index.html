@@ -4,6 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RecipeLingo</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #f7f0e5;
+      }
+
+      .skip-link {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        z-index: 20;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        color: #24211c;
+        background: #fffaf1;
+        transform: translateY(-150%);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+    </style>
   </head>
   <body>
     <a class="skip-link" href="#app">К содержимому</a>
@@ -11,4 +34,3 @@
     <div id="modal-root"></div>
   </body>
 </html>
-
