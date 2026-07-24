@@ -67,7 +67,7 @@ export class AppView {
     return `
       <section class="hero">
         <div class="hero__copy">
-          <p class="eyebrow">Готовьте. Переводите. Запоминайте.</p>
+          <p class="eyebrow">Готовь. Переводи. Запоминай.</p>
           <h1>Изучайте английский по зарубежным рецептам</h1>
           <p>Готовьте по зарубежным рецептам и учите английский на реальных примерах.</p>
           <form class="search-panel" data-search-form>
@@ -78,7 +78,15 @@ export class AppView {
             </div>
           </form>
         </div>
-        <img src="https://www.themealdb.com/images/media/meals/tqtywx1468317395.jpg" alt="Домашний десерт">
+        <img src="https://www.themealdb.com/images/media/meals/tqtywx1468317395.jpg" alt="Домашний десерт с ягодами">
+      </section>
+      <section class="how">
+        <h2>Как это работает</h2>
+        <ol class="steps">
+          <li><strong>Найдите рецепт.</strong><span>Пишите по-русски, по-английски или названием кухни.</span></li>
+          <li><strong>Сравните текст.</strong><span>Читайте оригинал, перевод или пары абзацев.</span></li>
+          <li><strong>Сохраните слова.</strong><span>Добавляйте слова с контекстом и повторяйте позже.</span></li>
+        </ol>
       </section>
     `;
   }
@@ -111,16 +119,16 @@ export class AppView {
           <button type="button" data-clear-search>Очистить</button>
         </div>
       </form>
-      <section class="search-filters" aria-label="Фильтры поиска">
+      <section class="search-suggestions" aria-label="Фильтры поиска">
         <div class="filter-group">
           <h2>Категории</h2>
-          ${filtersLoading ? '<p class="muted">Загружаю категории...</p>' : ''}
-          ${categories.length ? `<div class="filter-row">${categories.map((item) => `<button type="button" data-filter-category="${escapeHtml(item)}"${categoryButtonClass(item)}>${escapeHtml(item)}</button>`).join('')}</div>` : ''}
+          ${filtersLoading ? '<p class="muted">Загружаю доступные категории...</p>' : ''}
+          ${categories.length ? `<div class="suggestion-row">${categories.map((item) => `<button type="button" data-filter-category="${escapeHtml(item)}"${categoryButtonClass(item)}>${escapeHtml(item)}</button>`).join('')}</div>` : ''}
         </div>
         <div class="filter-group">
           <h2>Кухни</h2>
-          ${filtersLoading ? '<p class="muted">Загружаю кухни...</p>' : ''}
-          ${areas.length ? `<div class="filter-row">${areas.map((item) => `<button type="button" data-filter-area="${escapeHtml(item)}"${areaButtonClass(item)}>${escapeHtml(item)}</button>`).join('')}</div>` : ''}
+          ${filtersLoading ? '<p class="muted">Загружаю доступные кухни...</p>' : ''}
+          ${areas.length ? `<div class="suggestion-row">${areas.map((item) => `<button type="button" data-filter-area="${escapeHtml(item)}"${areaButtonClass(item)}>${escapeHtml(item)}</button>`).join('')}</div>` : ''}
         </div>
       </section>
       ${state === 'loading' ? '<div class="state">Ищу рецепты...</div>' : ''}
