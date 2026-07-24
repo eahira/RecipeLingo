@@ -1,14 +1,66 @@
-export function normalizeText(value) {
-  return String(value || '')
+const HTML_ENTITIES = {
+  '&nbsp;': ' ',
+  '&#xA0;': ' ',
+  '&#160;': ' ',
+  '&amp;': '&',
+  '&quot;': '"',
+  '&#039;': "'",
+  '&lt;': '<',
+  '&gt;': '>'
+};
+
+function valueToString(value) {
+  return String(value ?? '');
+}
+
+export function decodeHtmlEntities(value) {
+  return valueToString(value).replace(/&(?:nbsp|amp|quot|lt|gt);|&#(?:039|160);|&#xA0;/gi, (entity) => (
+    HTML_ENTITIES[entity] || HTML_ENTITIES[entity.toLowerCase()] || entity
+  ));
+}
+
+export function normalizeWhitespace(value) {
+  return decodeHtmlEntities(value)
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+/g, ' ')
     .replace(/\s+([,.;:!?])/g, '$1')
+    .trim();
+}
+
+export function normalizeApiText(value) {
+  return normalizeWhitespace(value)
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+export function normalizeSearchQuery(value) {
+  return normalizeApiText(value);
+}
+
+export function normalizeCacheText(value) {
+  return normalizeApiText(value).toLocaleLowerCase('en-US');
+}
+
+export function normalizeText(value) {
+  return normalizeApiText(value);
+}
+
 export function normalizeTranslation(value) {
-  return normalizeText(value)
+  return normalizeApiText(value)
     .replace(/^["'«»]+|["'«»]+$/g, '')
+    .trim();
+}
+
+export function normalizeTranslatedWord(value) {
+  return normalizeTranslation(value)
+    .replace(/^[\s"'“”‘’.,;:!?()[\]{}]+|[\s"'“”‘’.,;:!?()[\]{}]+$/g, '')
+    .trim();
+}
+
+export function normalizeTranslatedSentence(value) {
+  return normalizeApiText(value)
+    .replace(/\s+([,.;:!?])/g, '$1')
     .trim();
 }
 
@@ -63,7 +115,7 @@ export function formatDate(value) {
 }
 
 export function splitInstructionBlocks(value) {
-  const text = normalizeText(value);
+  const text = normalizeApiText(value);
 
   if (!text) {
     return [];
@@ -76,10 +128,33 @@ export function splitInstructionBlocks(value) {
 }
 
 export function escapeHtml(value) {
-  return String(value || '')
+  return valueToString(value)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+export function isBadTranslation(value, original = '') {
+  const text = normalizeApiText(value);
+  const source = normalizeApiText(original);
+
+  if (!text) {
+    return true;
+  }
+
+  if (/QUERY LENGTH LIMIT|MYMEMORY WARNING|INVALID|ERROR|DOCTYPE|<html/i.test(text)) {
+    return true;
+  }
+
+  if (/([a-zа-яё]{2,})\1{2,}/iu.test(text)) {
+    return true;
+  }
+
+  if (text.length > 12 && !/\s/.test(text) && /[qwrtpsdfghjklzxcvbnm]{8,}/i.test(text)) {
+    return true;
+  }
+
+  return text.length > Math.max(240, source.length * 8);
 }

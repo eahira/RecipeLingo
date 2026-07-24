@@ -1,4 +1,8 @@
 import { STORAGE_KEYS } from '../const.js';
+import { isBadTranslation, normalizeApiText, normalizeCacheText } from '../utils/text.js';
+
+const CACHE_VERSION = 2;
+const MAX_CACHE_ITEMS = 180;
 
 function readCache() {
   try {
@@ -18,11 +22,37 @@ function writeCache(cache) {
 
 function getKey(text, sourceLanguage, targetLanguage, contentType) {
   return [
+    CACHE_VERSION,
     sourceLanguage,
     targetLanguage,
     contentType,
-    text.trim().toLowerCase()
+    normalizeCacheText(text)
   ].join('|');
+}
+
+function isValidEntry(entry, text, sourceLanguage, targetLanguage, contentType) {
+  return entry
+    && typeof entry === 'object'
+    && entry.version === CACHE_VERSION
+    && entry.sourceText === normalizeApiText(text)
+    && entry.sourceLanguage === sourceLanguage
+    && entry.targetLanguage === targetLanguage
+    && entry.contentType === contentType
+    && typeof entry.translatedText === 'string'
+    && !isBadTranslation(entry.translatedText, text);
+}
+
+function trimCache(cache) {
+  const entries = Object.entries(cache)
+    .filter(([, value]) => value && typeof value === 'object' && value.version === CACHE_VERSION)
+    .sort((a, b) => a[1].createdAt - b[1].createdAt);
+
+  while (entries.length > MAX_CACHE_ITEMS) {
+    const [key] = entries.shift();
+    delete cache[key];
+  }
+
+  return cache;
 }
 
 export const translationCache = {
@@ -31,7 +61,7 @@ export const translationCache = {
     const key = getKey(text, sourceLanguage, targetLanguage, contentType);
     const entry = cache[key];
 
-    if (!entry || entry.sourceText !== text || typeof entry.translatedText !== 'string') {
+    if (!isValidEntry(entry, text, sourceLanguage, targetLanguage, contentType)) {
       return '';
     }
 
@@ -43,6 +73,7 @@ export const translationCache = {
     const key = getKey(text, sourceLanguage, targetLanguage, contentType);
 
     cache[key] = {
+      version: CACHE_VERSION,
       sourceText: text,
       translatedText,
       sourceLanguage,
@@ -51,6 +82,10 @@ export const translationCache = {
       createdAt: Date.now()
     };
 
-    writeCache(cache);
+    writeCache(trimCache(cache));
+  },
+
+  clear() {
+    writeCache({});
   }
 };
