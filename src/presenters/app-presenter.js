@@ -2,6 +2,7 @@ import { AppRoute } from '../const.js';
 import { dictionaryApi } from '../api/dictionary-api.js';
 import { mealsApi } from '../api/meals-api.js';
 import { render } from '../framework/render.js';
+import { mapRecipe } from '../models/meal-model.js';
 import { findSentence, normalizeClickedWord, normalizeText } from '../utils/text.js';
 import { translationService } from '../services/translation-service.js';
 import { favoritesService } from '../services/favorites-service.js';
@@ -56,6 +57,7 @@ export class AppPresenter {
           mode: button.dataset.recipeMode
         };
         this.renderRecipePage();
+        document.querySelector('#recipe-instructions')?.scrollIntoView({ block: 'start' });
       });
     });
 
@@ -170,38 +172,6 @@ export class AppPresenter {
     return this.searchState;
   }
 
-  mapRecipe(meal) {
-    const ingredients = [];
-
-    for (let index = 1; index <= 20; index += 1) {
-      const name = normalizeText(meal[`strIngredient${index}`]);
-      const measure = normalizeText(meal[`strMeasure${index}`]);
-
-      if (!name) {
-        continue;
-      }
-
-      ingredients.push({
-        id: index,
-        originalName: name,
-        originalMeasure: measure,
-        translatedName: '',
-        translatedMeasure: ''
-      });
-    }
-
-    return {
-      id: meal.idMeal,
-      title: meal.strMeal,
-      category: meal.strCategory || '',
-      area: meal.strArea || '',
-      thumb: meal.strMealThumb || '',
-      instructions: meal.strInstructions || '',
-      youtube: meal.strYoutube || '',
-      ingredients
-    };
-  }
-
   async translateRecipe(recipe) {
     const [translatedTitle, translatedIngredients, translatedInstructions] = await Promise.all([
       translationService.translateTitle(recipe.title),
@@ -248,7 +218,7 @@ export class AppPresenter {
 
     const terms = normalizedQuery.split(' ').filter(Boolean);
     return meals.filter((meal) => {
-      const recipe = this.mapRecipe(meal);
+      const recipe = mapRecipe(meal);
       const searchableText = [
         recipe.title,
         recipe.category,
@@ -429,7 +399,7 @@ export class AppPresenter {
         return;
       }
 
-      const recipe = this.mapRecipe(meal);
+      const recipe = mapRecipe(meal);
       const translated = await this.translateRecipe(recipe);
 
       this.recipeState = {

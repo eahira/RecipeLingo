@@ -15,7 +15,7 @@ function recipeCard(meal) {
       <div class="recipe-card__media">
         <img src="${escapeHtml(thumb)}" alt="${escapeHtml(title)}" loading="lazy">
         <button class="favorite-toggle ${meal.isFavorite ? 'is-active' : ''}" type="button" data-favorite="${escapeHtml(id)}" aria-label="${favoriteLabel}" aria-pressed="${meal.isFavorite ? 'true' : 'false'}" title="${favoriteLabel}">
-          <span aria-hidden="true">${meal.isFavorite ? '&#9829;' : '&#9825;'}</span>
+          <span aria-hidden="true">&#9825;</span>
         </button>
       </div>
       <div class="recipe-card__body">
@@ -149,8 +149,10 @@ export class AppView {
     const instructionPairs = translatedRecipe.instructionPairs || [];
     const ingredients = translatedRecipe.ingredients.map((item) => `
       <li>
-        <strong class="ingredient-primary">${escapeHtml(item.translatedName || item.originalName)}</strong>
-        ${(item.translatedMeasure || item.originalMeasure) ? `<span class="ingredient-amount">${escapeHtml(item.translatedMeasure || item.originalMeasure)}</span>` : ''}
+        <span class="ingredient-primary">
+          <strong>${escapeHtml(item.translatedName || item.originalName)}</strong>
+          ${(item.translatedMeasure || item.originalMeasure) ? `<strong class="ingredient-amount">${escapeHtml(item.translatedMeasure || item.originalMeasure)}</strong>` : ''}
+        </span>
         <small>${escapeHtml(item.originalName)}${item.originalMeasure ? ` · ${escapeHtml(item.originalMeasure)}` : ''}</small>
       </li>
     `).join('');
@@ -166,11 +168,15 @@ export class AppView {
 
     return `
       <article class="recipe-detail">
-        <a class="back-link" href="#/recipes">← К рецептам</a>
+        <a class="back-link" href="#/recipes">← К результатам</a>
         <div class="recipe-detail__hero">
           <img src="${escapeHtml(recipe.thumb)}" alt="${escapeHtml(recipe.title)}">
           <div class="recipe-detail__summary">
-            <p class="eyebrow">${escapeHtml(recipe.category)}${recipe.area ? ` · ${escapeHtml(recipe.area)}` : ''}</p>
+            <p class="eyebrow recipe-tags">
+              ${recipe.category ? `<button class="meta-link meta-link--eyebrow" type="button" data-filter-category="${escapeHtml(recipe.category)}">${escapeHtml(recipe.category)}</button>` : ''}
+              ${recipe.category && recipe.area ? '<span aria-hidden="true">·</span>' : ''}
+              ${recipe.area ? `<button class="meta-link meta-link--eyebrow" type="button" data-filter-area="${escapeHtml(recipe.area)}">${escapeHtml(recipe.area)}</button>` : ''}
+            </p>
             <h1>${escapeHtml(recipe.title)}</h1>
             ${translatedRecipe.translatedTitle ? `<p>${escapeHtml(translatedRecipe.translatedTitle)}</p>` : ''}
             <button type="button" data-favorite="${escapeHtml(recipe.id)}">${isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}</button>
@@ -180,7 +186,7 @@ export class AppView {
           <h2>Ингредиенты</h2>
           <ul>${ingredients}</ul>
         </section>
-        <section class="instructions">
+        <section class="instructions" id="recipe-instructions">
           <h2>Инструкция</h2>
           <p class="muted">Машинный перевод используется как подсказка. Сравнивайте его с английским оригиналом.</p>
           <div class="mode-switch" aria-label="Режим чтения инструкции">
@@ -192,6 +198,7 @@ export class AppView {
               <button class="${mode === value ? 'is-active' : ''}" type="button" data-recipe-mode="${value}">${label}</button>
             `).join('')}
           </div>
+          <p class="mode-switch__hint">Выберите режим чтения: перевод, оригинал или сравнение по абзацам.</p>
           ${mode === 'translated' ? `<div class="text-block">${escapeHtml(translatedInstructions || 'Перевод временно недоступен.')}</div>` : ''}
           ${mode === 'original' ? `<div class="text-block">${clickableText(recipe.instructions)}</div>` : ''}
           ${mode === 'both' ? `<div class="paired-instructions">${pairedInstructions}</div>` : ''}
