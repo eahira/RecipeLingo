@@ -257,6 +257,11 @@ export class AppView {
         <a class="button-link" href="#/recipes">Найти рецепт</a>
       </div>`}
       ${words.length && !filteredWords.length ? '<div class="state">По этому запросу слов не найдено.</div>' : ''}
+      <section class="data-panel">
+        <h2>Данные приложения</h2>
+        <p>Переводы сохраняются в браузере, чтобы не загружать их повторно.</p>
+        <button type="button" data-clear-translation-cache>Очистить кеш переводов</button>
+      </section>
     `;
   }
 

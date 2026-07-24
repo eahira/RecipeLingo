@@ -569,6 +569,11 @@ export class AppPresenter {
         this.renderVocabulary();
       });
     });
+
+    document.querySelector('[data-clear-translation-cache]')?.addEventListener('click', () => {
+      translationService.clearCache();
+      this.renderVocabulary();
+    });
   }
 
   renderModal(content) {

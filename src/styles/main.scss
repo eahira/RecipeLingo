@@ -592,6 +592,25 @@ p {
   gap: 0.85rem;
 }
 
+.data-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.data-panel h2,
+.data-panel p {
+  margin: 0;
+}
+
+.data-panel button {
+  width: fit-content;
+}
+
 .word-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -839,8 +858,10 @@ p {
   }
 
   .vocabulary-toolbar,
-  .word-card {
+  .word-card,
+  .data-panel button {
     grid-template-columns: 1fr;
+    width: 100%;
   }
 
   .vocabulary-toolbar label {
